@@ -2,7 +2,7 @@
   "name": "sagemaker-deployment-construct",
   "version": "0.1.0",
   "bin": {
-    "sagemaker-deployment-construct": "bin/sagemaker-deployment-construct.js"
+    "sagemaker-deployment-construct": "bin/app.js"
   },
   "scripts": {
     "build": "tsc",
