@@ -11,8 +11,8 @@ import { Construct } from 'constructs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { DeploymentType, DeploymentStrategyFactory } from './model-serving/deployment-strategy-factory';
 import { ModelConfig } from './model-serving/deployment-strategy';
-import { AppConfigIntegration } from './app-config/app-config-integration';
-import { AppConfigDeploymentManager } from './app-config/appconfig-deployment';
+import { AppConfigIntegration } from './appConfig/appconfig-integration';
+import { AppConfigDeploymentManager } from './appConfig/appconfig-deployment';
 import { SageMakerDashboard } from './monitor-dashboard/dashboard-stack';
 import { SageMakerAlarms } from './monitor-dashboard/alarms-stack';
 import { SageMakerModelMonitoring } from './monitor-dashboard/model-monitor-stack';
@@ -183,7 +183,7 @@ export interface SageMakerDeploymentProps {
 /**
  * Construct for deploying SageMaker models with integrated configuration management and monitoring
  */
-export class SageMakerDeployment extends Construct {
+export class SageMakerDeploymentStack extends Construct {
   // Public properties
   public readonly endpoint: sagemaker.CfnEndpoint;
   public readonly endpointConfig: sagemaker.CfnEndpointConfig;

@@ -1,0 +1,33 @@
+{
+    "modelParameters": {
+      "inferenceThreshold": 0.7,
+      "maxRequestsPerInstance": 100,
+      "timeoutMs": 5000
+    },
+    "featureFlags": {
+      "enableNewFeature": false,
+      "useAdvancedPreprocessing": true,
+      "logDetailedMetrics": true
+    },
+    "preprocessing": {
+      "normalization": {
+        "enabled": true,
+        "method": "z-score"
+      },
+      "missingValues": {
+        "strategy": "mean",
+        "fillValue": 0
+      }
+    },
+    "postprocessing": {
+      "roundDecimals": 4,
+      "applyBusinessRules": true
+    },
+    "monitoring": {
+      "sampleRate": 0.1,
+      "alertThresholds": {
+        "errorRate": 0.01,
+        "latencyMs": 1000
+      }
+    }
+  }

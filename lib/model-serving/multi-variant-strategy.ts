@@ -2,7 +2,7 @@
 import * as sagemaker from 'aws-cdk-lib/aws-sagemaker';
 import * as cdk from 'aws-cdk-lib';
 import { DeploymentResult, DeploymentStrategyProps, IDeploymentStrategy } from './deployment-strategy';
-import { AppConfigIntegration } from '../app-config/app-config-integration';
+import { AppConfigIntegration } from '../appConfig/appconfig-integration';
 
 export class MultiVariantStrategy implements IDeploymentStrategy {
   private readonly props: DeploymentStrategyProps;

@@ -421,7 +421,7 @@ export class SageMakerModelServing extends Construct {
     const accountId = cdk.Stack.of(this).account;
     
     // This is a placeholder - in a real implementation you would use the actual framework-specific images
-    return `${accountId}.dkr.ecr.${region}.amazonaws.com/sagemaker-inference:latest`;
+    return `763104351884.dkr.ecr.${region}.amazonaws.com/pytorch-inference:2.5.1-cpu-py311-ubuntu22.04-sagemaker`;
   }
   
   /**

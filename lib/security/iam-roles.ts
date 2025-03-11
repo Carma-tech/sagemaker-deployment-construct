@@ -199,6 +199,19 @@ export class SageMakerExecutionRole extends Construct {
         resources: [props.kmsKey.keyArn],
       }));
     }
+
+    this.role.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        's3:GetObject',
+        's3:ListBucket'
+      ],
+      resources: [
+        `arn:aws:s3:::${props.modelArtifactBuckets[0]}`,
+        `arn:aws:s3:::${props.modelArtifactBuckets[0]}/*`
+      ]
+    }));
+    
   }
 
   private addVpcPermissions(): void {

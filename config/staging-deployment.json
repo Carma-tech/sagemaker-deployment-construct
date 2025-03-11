@@ -1,0 +1,74 @@
+{
+    "namePrefix": "staging-model",
+    "deploymentStrategy": "MULTI_VARIANT",
+    "models": [
+      {
+        "name": "staging-model-current",
+        "variantName": "Current",
+        "artifacts": {
+          "bucketName": "model-artifacts-bucket",
+          "objectKey": "models/staging/current/model.tar.gz"
+        },
+        "initialInstanceCount": 1,
+        "instanceType": "ml.c5.large",
+        "initialVariantWeight": 0.8
+      },
+      {
+        "name": "staging-model-candidate",
+        "variantName": "Candidate",
+        "artifacts": {
+          "bucketName": "model-artifacts-bucket",
+          "objectKey": "models/staging/candidate/model.tar.gz"
+        },
+        "initialInstanceCount": 1,
+        "instanceType": "ml.c5.large",
+        "initialVariantWeight": 0.2
+      }
+    ],
+    "appConfig": {
+      "applicationName": "model-application-staging",
+      "environmentName": "staging",
+      "configurationProfileName": "default-config",
+      "configBucket": "model-config-bucket",
+      "configKey": "configs/staging/model-config.json"
+    },
+    "security": {
+      "encryptionEnabled": true,
+      "createKmsKey": true,
+      "volumeEncryptionEnabled": true
+    },
+    "monitoring": {
+      "dataQualityEnabled": true,
+      "modelQualityEnabled": true,
+      "monitoringOutputBucket": "model-monitoring-bucket",
+      "monitoringOutputPrefix": "staging-monitoring",
+      "scheduleExpression": "rate(1 day)"
+    },
+    "autoscaling": {
+      "enabled": true,
+      "defaultMinInstanceCount": 1,
+      "defaultMaxInstanceCount": 3,
+      "defaultScalingMetric": "CPU_UTILIZATION",
+      "defaultTargetValue": 60,
+      "variantConfigs": {
+        "Current": {
+          "minInstanceCount": 1,
+          "maxInstanceCount": 3
+        },
+        "Candidate": {
+          "minInstanceCount": 1,
+          "maxInstanceCount": 2
+        }
+      }
+    },
+    "operations": {
+      "updateStrategy": "BLUE_GREEN",
+      "logging": {
+        "enableCloudWatchLogs": true,
+        "logRetentionDays": 14,
+        "enableDataCaptureLogging": true,
+        "dataCapturePercentage": 10,
+        "dataCaptureS3Location": "s3://model-monitoring-bucket/datacapture/staging"
+      }
+    }
+  }

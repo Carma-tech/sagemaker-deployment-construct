@@ -1,0 +1,47 @@
+{
+    "namePrefix": "dev-model",
+    "deploymentStrategy": "SINGLE_MODEL",
+    "models": [
+      {
+        "name": "development-model",
+        "artifacts": {
+          "bucketName": "textclassificationmldemo-model-archiving-us-east-1-2667",
+          "objectKey": "models/model-a/model/model.tar.gz"
+        },
+        "initialInstanceCount": 1,
+        "instanceType": "ml.t3.medium"
+      }
+    ],
+    "appConfig": {
+      "applicationName": "model-application-dev",
+      "environmentName": "dev",
+      "configurationProfileName": "default-config",
+      "configBucket": "model-artifacts-bucket",
+      "configKey": "models/config/model-config.json"
+    },
+    "security": {
+      "encryptionEnabled": true,
+      "createKmsKey": true,
+      "volumeEncryptionEnabled": true
+    },
+    "monitoring": {
+      "dataQualityEnabled": true,
+      "modelQualityEnabled": false,
+      "monitoringOutputBucket": "model-monitoring-bucket",
+      "monitoringOutputPrefix": "dev-monitoring",
+      "scheduleExpression": "rate(1 day)"
+    },
+    "autoscaling": {
+      "enabled": false
+    },
+    "operations": {
+      "updateStrategy": "ROLLOVER",
+      "logging": {
+        "enableCloudWatchLogs": true,
+        "logRetentionDays": 7,
+        "enableDataCaptureLogging": true,
+        "dataCapturePercentage": 20,
+        "dataCaptureS3Location": "s3://model-monitoring-bucket/datacapture/dev"
+      }
+    }
+  }
