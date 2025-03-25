@@ -52,6 +52,10 @@ export class ModelServingStack extends BaseStack {
 
     const dynamicConfig = this.commonProps.appConfig.DynamicConfig;
 
+    const lambdaRoleArn = cdk.Fn.importValue('LambdaExecutionAppconfigRoleArn');
+    // Convert the role ARN string to an IRole
+    const lambdaRole = iam.Role.fromRoleArn(this, 'ImportedLambdaRole', lambdaRoleArn);
+
     // Import appconfig fetcher lambda from appconfig stack
     // Import the AppConfig parameter fetcher lambda using fromFunctionAttributes with sameEnvironment flag.
     const appConfigParameterFetcher = lambda.Function.fromFunctionAttributes(this,
@@ -63,6 +67,7 @@ export class ModelServingStack extends BaseStack {
     );
     const provider = new cr.Provider(this, 'AppConfigParameterProvider', {
       onEventHandler: appConfigParameterFetcher,
+      role: lambdaRole
     });
 
     // Fetch the model artifact bucket name from AppConfig.
@@ -72,7 +77,7 @@ export class ModelServingStack extends BaseStack {
         ApplicationId: dynamicConfig.ApplicationId,
         EnvironmentId: dynamicConfig.EnvironmentId,
         ConfigurationProfileId: dynamicConfig.ConfigurationProfileId,
-        ClientId: 'client-1',
+        RequiredMinimumPollIntervalInSeconds: 30,
         ParameterKey: 'modelArtifactBucketName'
       },
     });

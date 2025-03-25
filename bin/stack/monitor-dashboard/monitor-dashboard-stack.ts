@@ -13,6 +13,7 @@ import { CloudWatchDashboard } from './cloudwatch-dashboard';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as cr from 'aws-cdk-lib/custom-resources';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 export class MonitorDashboardStack extends BaseStack {
   private readonly dashboard: CloudWatchDashboard;
@@ -30,6 +31,10 @@ export class MonitorDashboardStack extends BaseStack {
       period: cdk.Duration.minutes(1),
     });
 
+    const lambdaRoleArn = cdk.Fn.importValue('LambdaExecutionAppconfigRoleArn');
+    // Convert the role ARN string to an IRole
+    const lambdaRole = iam.Role.fromRoleArn(this, 'ImportedLambdaRole', lambdaRoleArn);
+
     // Import appconfig fetcher lambda from appconfig stack
     const appConfigParameterFetcher = lambda.Function.fromFunctionAttributes(this,
       'AppconfigParameterFetcherRole',
@@ -41,6 +46,7 @@ export class MonitorDashboardStack extends BaseStack {
 
     const provider = new cr.Provider(this, 'AppConfigParameterProvider', {
       onEventHandler: appConfigParameterFetcher,
+      role: lambdaRole
     });
 
     const dynamicConfig = this.commonProps.appConfig.DynamicConfig;
@@ -51,8 +57,8 @@ export class MonitorDashboardStack extends BaseStack {
         ApplicationId: dynamicConfig.ApplicationId,
         EnvironmentId: dynamicConfig.EnvironmentId,
         ConfigurationProfileId: dynamicConfig.ConfigurationProfileId,
-        ClientId: 'client-1',
-        ParameterKey: 'sageMakerEndpointName'
+        ParameterKey: 'sageMakerEndpointName',
+        RequiredMinimumPollIntervalInSeconds: 30,
       },
     });
 

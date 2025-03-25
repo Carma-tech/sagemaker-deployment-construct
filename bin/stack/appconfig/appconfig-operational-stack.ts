@@ -55,15 +55,6 @@ export class AppConfigOperationalStack extends BaseStack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Create a Lambda function to serve predictions.
-    const appConfigParameterFetcher = new lambda.Function(this, 'AppConfigParameterFetcher', {
-      runtime: lambda.Runtime.PYTHON_3_13,
-      code: lambda.Code.fromAsset('codes/lambda/appconfig/parameter-fetcher'),
-      handler: 'handler.handler',
-      architecture: lambda.Architecture.ARM_64,
-      logRetention: logs.RetentionDays.ONE_WEEK
-    });
-
     const lambdaRole = new iam.Role(this, 'LambdaExecutionRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       managedPolicies: [
@@ -77,10 +68,25 @@ export class AppConfigOperationalStack extends BaseStack {
       resources: [`arn:aws:appconfig:${this.region}:${this.account}:application/*`],
     }));
 
+    // Create a Lambda function to serve predictions.
+    const appConfigParameterFetcher = new lambda.Function(this, 'AppConfigParameterFetcher', {
+      runtime: lambda.Runtime.PYTHON_3_13,
+      code: lambda.Code.fromAsset('codes/lambda/appconfig/parameter-fetcher'),
+      handler: 'handler.handler',
+      architecture: lambda.Architecture.ARM_64,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      role: lambdaRole
+    });
+
     new cdk.CfnOutput(this, 'AppconfigParameterFetcher', {
       value: appConfigParameterFetcher.functionArn,
       exportName: 'AppconfigParameterFetcher'
     });
+
+    new cdk.CfnOutput(this, 'LambdaExecutionAppconfigRole', {
+      value: lambdaRole.roleArn, 
+      exportName: 'LambdaExecutionAppconfigRoleArn'
+    })
 
     new cdk.CfnOutput(this, 'AppConfigApplicationId', {
       value: appConfigApplication.ref,

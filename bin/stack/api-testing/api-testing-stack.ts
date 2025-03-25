@@ -42,6 +42,10 @@ export class APITestingStack extends BaseStack {
 
         const dynamicConfig = this.commonProps.appConfig.DynamicConfig;
 
+        const lambdaRoleArn = cdk.Fn.importValue('LambdaExecutionAppconfigRoleArn');
+        // Convert the role ARN string to an IRole
+        const lambdaRole = iam.Role.fromRoleArn(this, 'ImportedLambdaRole', lambdaRoleArn);
+
         // Import the AppConfig parameter fetcher lambda using fromFunctionAttributes with sameEnvironment flag.
         const appConfigParameterFetcher = lambda.Function.fromFunctionAttributes(this,
             'AppconfigParameterFetcherRole',
@@ -52,6 +56,7 @@ export class APITestingStack extends BaseStack {
         );
         const provider = new cr.Provider(this, 'AppConfigParameterProvider', {
             onEventHandler: appConfigParameterFetcher,
+            role: lambdaRole
         });
 
         const dynamicParameterResource = new cdk.CustomResource(this, 'SageMakerEndpointParameter', {
@@ -60,14 +65,27 @@ export class APITestingStack extends BaseStack {
                 ApplicationId: dynamicConfig.ApplicationId,
                 EnvironmentId: dynamicConfig.EnvironmentId,
                 ConfigurationProfileId: dynamicConfig.ConfigurationProfileId,
-                ClientId: 'client-1',
-                ParameterKey: 'sageMakerEndpointName'
+                // ClientId: 'client-1',
+                ParameterKey: 'sageMakerEndpointName',
+                RequiredMinimumPollIntervalInSeconds: 30,
             },
         });
-        const apiEndpoint: string = dynamicParameterResource.getAttString('ParameterValue');
 
-        const snsTopic = this.createSnsTopic(this.stackConfig.SNSTopicName);
-        this.putParameter('testTriggerSnsTopicName', snsTopic.topicName);
+        const dynamicTopicResource = new cdk.CustomResource(this, 'TestTriggerSnsTopicParameter', {
+            serviceToken: provider.serviceToken,
+            properties: {
+              ApplicationId: dynamicConfig.ApplicationId,
+              EnvironmentId: dynamicConfig.EnvironmentId,
+              ConfigurationProfileId: dynamicConfig.ConfigurationProfileId,
+              RequiredMinimumPollIntervalInSeconds: 30,
+              ParameterKey: 'testTriggerSnsTopicName'
+            },
+          });
+        const apiEndpoint: string = dynamicParameterResource.getAttString('ParameterValue');
+        const topicName = dynamicTopicResource.getAttString('ParameterValue');
+
+        const snsTopic = this.createSnsTopic(topicName);
+        // this.putParameter('testTriggerSnsTopicName', snsTopic.topicName);
 
         const role = this.createLambdaRole('TestTrigger-Lambda');
         // const apiEndpoint: string = this.getParameter('apiEndpoint');

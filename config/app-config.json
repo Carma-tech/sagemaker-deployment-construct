@@ -7,9 +7,9 @@
         "Profile": "default"
     },
     "DynamicConfig": {
-        "ApplicationId": "app-0a1b2c3d4e5f6g7h8",
-        "EnvironmentId": "env-0a1b2c3d4e5f6g7h8",
-        "ConfigurationProfileId": "cp-0a1b2c3d4e5f6g7h8",
+        "ApplicationId": "nxcdf98",
+        "EnvironmentId": "q3cgmp2",
+        "ConfigurationProfileId": "2q8l51s",
         "DeploymentStrategyId": "ds-0a1b2c3d4e5f6g7h8"
     },
     "Stack": {

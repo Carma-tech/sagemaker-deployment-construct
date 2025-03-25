@@ -28,6 +28,10 @@ export class APIHostingStack extends BaseStack {
 
         const dynamicConfig = this.commonProps.appConfig.DynamicConfig;
 
+        const lambdaRoleArn = cdk.Fn.importValue('LambdaExecutionAppconfigRoleArn');
+        // Convert the role ARN string to an IRole
+        const lambdaRole = iam.Role.fromRoleArn(this, 'ImportedLambdaRole', lambdaRoleArn);
+
         // Import the AppConfig parameter fetcher lambda using fromFunctionAttributes with sameEnvironment flag.
         const appConfigParameterFetcher = lambda.Function.fromFunctionAttributes(this,
             'AppconfigParameterFetcherRole',
@@ -38,6 +42,7 @@ export class APIHostingStack extends BaseStack {
         );
         const provider = new cr.Provider(this, 'AppConfigParameterProvider', {
             onEventHandler: appConfigParameterFetcher,
+            role: lambdaRole
         });
 
         const dynamicParameterResource = new cdk.CustomResource(this, 'SageMakerEndpointParameter', {
@@ -46,8 +51,8 @@ export class APIHostingStack extends BaseStack {
                 ApplicationId: dynamicConfig.ApplicationId,
                 EnvironmentId: dynamicConfig.EnvironmentId,
                 ConfigurationProfileId: dynamicConfig.ConfigurationProfileId,
-                ClientId: 'client-1',
-                ParameterKey: 'sageMakerEndpointName'
+                ParameterKey: 'sageMakerEndpointName',
+                RequiredMinimumPollIntervalInSeconds: 30,
             },
         });
         const sageMakerEndpoint = dynamicParameterResource.getAttString('ParameterValue');
