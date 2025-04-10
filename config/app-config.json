@@ -1,0 +1,105 @@
+{
+    "Project": {
+        "Name": "SageMakerDeployment",
+        "Stage": "Dev",
+        "Account": "YOUR_AWS_ACCOUNT_ID",
+        "Region": "us-east-1"
+    },
+    "DynamicConfig": {
+        "ApplicationId": "APP_CONFIG_APPLICATION_ID",
+        "EnvironmentId": "ENV_ID",
+        "ConfigurationProfileId": "PROFILE_ID"
+    },
+    "Stack": {
+        "AppConfigOperational": {
+            "Name": "AppConfigOperationalStack",
+            "ApplicationName": "SageMakerConfig",
+            "EnvironmentName": "Production",
+            "ConfigurationProfileName": "ModelParameters",
+            "DeploymentStrategyName": "RollingDeploy",
+            "CreateConfigBucket": true,
+            "ConfigBucketName": "sagemaker-deployment-configs",
+            "InitialConfigPath": "config/initial",
+            "EnableAutoSync": true,
+            "DeploymentDurationInMinutes": 5,
+            "GrowthFactor": 20
+        },
+        "ModelTraining": {
+            "Name": "ModelTrainingStackv1",
+            "ModelName": "text-classification-v1",
+            "Version": "v1",
+            "TrainingConfig": "config/model-training-config.yaml"
+        },
+        "ModelArchiving": {
+            "Name": "ModelArchivingStack",
+            "CreateModelArtifactBucket": true,
+            "ModelArtifactBucketName": "sagemaker-deployment-model-artifacts",
+            "CreateModelArchiveBucket": true,
+            "ModelArchiveBucketName": "sagemaker-deployment-model-archives"
+        },
+        "ModelServing": {
+            "Name": "ModelServingStack",
+            "SingleEndpointWithVariants": true,
+            "EnableModelMonitoring": true,
+            "SubscriptionEmails": [
+                "youremail@example.com"
+            ],
+            "EndpointConfigName": "ModelEndpointConfig",
+            "EndpointName": "ModelEndpoint",
+            "Deploy": true,
+            "UpdateAppConfig": true
+        },
+        "ModelTransformJob": {
+            "Name": "ModelTransformJobStackv1",
+            "BucketBaseName": "model-transform",
+            "ModelList": [
+                {
+                    "ModelName": "Model-A-v1",
+                    "InstanceType": "m4.xlarge",
+                    "InputPath": "models/model-a/input",
+                    "OutputPath": "models/model-a/output"
+                }
+            ]
+        },
+        "APIHosting": {
+            "Name": "APIHostingStack",
+            "ApiName": "ModelAPI",
+            "StageName": "dev"
+        },
+        "MonitorDashboard": {
+            "Name": "MonitorDashboardStack",
+            "DashboardName": "ModelMonitoringDashboard",
+            "AppConfig": {
+                "ApplicationId": "APP_CONFIG_APPLICATION_ID",
+                "EnvironmentId": "ENV_ID",
+                "ConfigurationProfileId": "PROFILE_ID"
+            }
+        },
+        "CICDPipeline": {
+            "Name": "CICDPipelineStackv1",
+            "RepositoryName": "amazon-sagemaker-model-serving-using-aws-cdk-v2",
+            "BranchName": "add-model-training-stack",
+            "ConnectionArn": "arn:aws:codeconnections:us-east-1:717918134056:connection/7e4bcd1d-6aea-4dee-98e5-edf22f6cadb0"
+        },
+        "APITesting": {
+            "Name": "APITestingStack",
+            "ScheduleEnabled": true,
+            "ScheduleName": "ModelAPITesting",
+            "ScheduleRate": "rate(1 hour)",
+            "TestConfigFile": "test_config.json"
+        },
+        "TesterDashboard": {
+            "Name": "TesterDashboardStack",
+            "DashboardName": "TesterDashboard"
+        },
+        "SecurityOperationalEnhancements": {
+            "Name": "SecurityOperationalEnhancementsStack",
+            "EnableVPCEndpoints": true,
+            "EnableKMSEncryption": true
+        },
+        "ModelWorkflow": {
+            "Name": "ModelWorkflowStack",
+            "WorkflowName": "ModelDeploymentWorkflow"
+        }
+    }
+}
