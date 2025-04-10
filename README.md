@@ -1,7 +1,3 @@
-Below is an example README that documents the updated project requirements, architecture, and deployment steps. You can adjust sections as needed for your project.
-
----
-
 # TextClassification ML Deployment Construct
 
 This repository implements an AWS CDK v2-based infrastructure for deploying, serving, and monitoring machine learning models on AWS SageMaker. The project leverages dynamic configuration using AWS AppConfig to update model parameters at runtime without requiring redeployments. It includes multiple stacks for model training, archiving, serving, API hosting, testing, monitoring, and more.
@@ -37,6 +33,12 @@ This project provides a modular, reusable infrastructure for serving machine lea
 - **AppConfigOperationalStack:** (Provisions AWS AppConfig resources for dynamic configuration.)
 - **SecurityOperationalEnhancementsStack:** (Implements security best practices and operational enhancements.)
 - **ModelWorkflowStack:** (Orchestrates workflows such as model retraining and redeployment.)
+
+---
+
+## Infrastructure Desing
+
+![AWS Infrastructure](diagram/diagrams_output/sagemaker_cdk_architecture.png)
 
 ---
 
@@ -326,3 +328,4 @@ The project uses an external configuration file (`config/app-config.json`). Belo
 ## License
 
 This project is licensed under the MIT License.
+

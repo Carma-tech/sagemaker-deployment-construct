@@ -1,33 +1,43 @@
 import boto3
-import yaml
+import json
 import logging
-# import sagemaker
-
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 def handler(event, context):
-    # Load YAML configuration
-    with open('../../config/model-training-config.yaml', 'r') as file:
-        config = yaml.safe_load(file)
-
+    # Get bucket name from environment variables or event
+    bucket_name = event.get('bucket_name', os.environ.get('CONFIG_BUCKET_NAME'))
+    config_key = event.get('config_key', os.environ.get('CONFIG_KEY', 'configs/model-training-config.json'))
+    
+    if not bucket_name:
+        raise ValueError("Bucket name must be provided in event or as environment variable")
+    
+    # Load JSON configuration from S3
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.get_object(Bucket=bucket_name, Key=config_key)
+        config_content = response['Body'].read().decode('utf-8')
+        config = json.loads(config_content)
+        logger.info(f"Loaded config from s3://{bucket_name}/{config_key}")
+    except Exception as e:
+        logger.error(f"Error loading config from S3: {str(e)}")
+        raise
+    
     logger.info(f"Config: {config}")
-    # Extract parameters from YAML file
+    
+    # Extract parameters from JSON file
     training_params = config['Training']['Parameters']
     resources = config['Training']['Resources']
     container = config['Training']['Container']
     output = config['Training']['Output']
 
     # Define S3 paths for input/output data
-    # Pass bucket name as an event parameter
-    bucket_name = event['bucket_name']
     s3_prefix = output['s3_path_prefix']
 
     # Determine version number by listing objects in S3
-    s3_client = boto3.client('s3')
     response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=s3_prefix)
 
     versions = [int(obj['Key'].split('/')[-2][1:])
@@ -41,12 +51,12 @@ def handler(event, context):
 
     # Create SageMaker training job
     response = sagemaker_client.create_training_job(
-        TrainingJobName=f"pytorch-text-classification-v{next_version}",
+        TrainingJobName=f"{config['Training']['JobNamePrefix']}-v{next_version}",
         AlgorithmSpecification={
             "TrainingImage": container['image'],
             "TrainingInputMode": "File",
         },
-        RoleArn=event['role_arn'],  # Pass role ARN as an event parameter
+        RoleArn=event.get('role_arn', os.environ.get('SAGEMAKER_ROLE_ARN')),
         OutputDataConfig={"S3OutputPath": output_s3_uri},
         ResourceConfig={
             "InstanceType": resources['instance_type'],
@@ -67,8 +77,16 @@ def handler(event, context):
         },
         Environment={
             'SAGEMAKER_PROGRAM': 'train.py',
-            'SAGEMAKER_REGION': 'us-east-1'
+            'SAGEMAKER_REGION': os.environ.get('AWS_REGION', 'us-east-1')
         }
     )
 
-    return {"statusCode": 200, "body": response}
+    return {
+        "statusCode": 200, 
+        "body": {
+            "trainingJobName": f"{config['Training']['JobNamePrefix']}-v{next_version}",
+            "outputS3Uri": output_s3_uri,
+            "version": next_version,
+            "response": response
+        }
+    }

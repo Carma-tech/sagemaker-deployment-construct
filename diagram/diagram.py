@@ -10,6 +10,7 @@ from diagrams.aws.general import User
 from diagrams.aws.devtools import Codebuild
 from diagrams.onprem.client import User as Developer
 from diagrams.aws.management import SystemsManagerParameterStore as AppConfig
+import os
 
 # Set the diagram properties
 graph_attr = {
@@ -18,8 +19,17 @@ graph_attr = {
     "pad": "0.5"
 }
 
+# Ensure the output directory exists
+output_dir = "diagrams_output"
+os.makedirs(output_dir, exist_ok=True)
+output_file = os.path.join(output_dir, "sagemaker_cdk_architecture")
+
 # Create the main diagram
-with Diagram("SageMaker CDK Infrastructure Architecture", show=False, graph_attr=graph_attr, filename="sagemaker_cdk_architecture"):
+with Diagram("SageMaker CDK Infrastructure Architecture", 
+             show=False, 
+             graph_attr=graph_attr, 
+             filename=output_file,
+             outformat="png"):
     
     # Create the user/developer node
     user = Developer("User/Developer")
@@ -126,3 +136,5 @@ with Diagram("SageMaker CDK Infrastructure Architecture", show=False, graph_attr
     # Security connections
     iam_roles >> Edge(label="Grants permissions to") >> sm_endpoint
     iam_roles >> Edge(label="Grants permissions to") >> app_config
+
+print(f"Diagram has been generated and saved to {output_file}.png")

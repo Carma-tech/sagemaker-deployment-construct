@@ -1,0 +1,47 @@
+{
+  "modelParameters": {
+    "preprocessing": {
+      "normalization": true,
+      "featureEngineering": {
+        "textTokenization": true,
+        "stopwordRemoval": true
+      }
+    },
+    "training": {
+      "hyperparameters": {
+        "learningRate": 0.001,
+        "batchSize": 32,
+        "epochs": 10,
+        "optimizer": "adam"
+      },
+      "resources": {
+        "instanceType": "ml.m5.large",
+        "instanceCount": 1,
+        "volumeSizeGB": 30,
+        "maxRuntimeSeconds": 3600
+      }
+    },
+    "inference": {
+      "thresholds": {
+        "classification": 0.5,
+        "confidence": 0.7
+      },
+      "batchSize": 10,
+      "maxConcurrentTransforms": 2
+    }
+  },
+  "sageMakerEndpointName": "sagemaker-deployment-multi-model-endpoint",
+  "modelArtifactBucketName": "sagemaker-model-artifacts",
+  "modelList": [
+    {
+      "ModelName": "text-classification-model",
+      "ModelS3Key": "models/text-classification/v1/model.tar.gz",
+      "ModelDockerImage": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.12.0-cpu-py38",
+      "VariantName": "PrimaryVariant",
+      "VariantWeight": 1,
+      "InstanceCount": 1,
+      "InstanceType": "ml.m5.large",
+      "ModelServerWorkers": 2
+    }
+  ]
+}
