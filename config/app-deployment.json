@@ -1,0 +1,51 @@
+{
+    "namePrefix": "prod-model",
+    "deploymentStrategy": "SINGLE_MODEL",
+    "models": [
+      {
+        "name": "production-model",
+        "artifacts": {
+          "bucketName": "model-artifacts-bucket",
+          "objectKey": "models/production/model.tar.gz"
+        },
+        "initialInstanceCount": 2,
+        "instanceType": "ml.m5.2xlarge"
+      }
+    ],
+    "appConfig": {
+      "applicationName": "production-models",
+      "environmentName": "prod",
+      "configurationProfileName": "default-config",
+      "configBucket": "model-config-bucket",
+      "configKey": "configs/prod/model-config.json"
+    },
+    "security": {
+      "encryptionEnabled": true,
+      "createKmsKey": true,
+      "volumeEncryptionEnabled": true
+    },
+    "monitoring": {
+      "dataQualityEnabled": true,
+      "modelQualityEnabled": true,
+      "monitoringOutputBucket": "model-monitoring-bucket",
+      "monitoringOutputPrefix": "prod-monitoring",
+      "scheduleExpression": "rate(1 day)"
+    },
+    "autoscaling": {
+      "enabled": true,
+      "defaultMinInstanceCount": 2,
+      "defaultMaxInstanceCount": 5,
+      "defaultScalingMetric": "CPU_UTILIZATION",
+      "defaultTargetValue": 70
+    },
+    "operations": {
+      "updateStrategy": "BLUE_GREEN",
+      "logging": {
+        "enableCloudWatchLogs": true,
+        "logRetentionDays": 30,
+        "enableDataCaptureLogging": true,
+        "dataCapturePercentage": 5,
+        "dataCaptureS3Location": "s3://model-monitoring-bucket/datacapture/prod"
+      }
+    }
+  }
