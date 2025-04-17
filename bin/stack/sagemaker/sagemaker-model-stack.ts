@@ -28,48 +28,59 @@ export class SageMakerModelStack extends BaseStack {
 
     this.models = new Map();
 
-    // Create an execution role that inherits from the base role
+    // Create an execution role for SageMaker with explicit permissions
     this.executionRole = new iam.Role(this, 'ModelExecutionRole', {
       roleName: `${this.projectPrefix}-model-execution-role`,
       assumedBy: new iam.ServicePrincipal('sagemaker.amazonaws.com'),
+      managedPolicies: [
+        // Add the AmazonSageMakerFullAccess managed policy
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSageMakerFullAccess')
+      ]
     });
 
-    // Add permissions from base role
+    // Add direct S3 permissions to access model artifacts (instead of assuming base role)
     this.executionRole.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
-        'sts:AssumeRole'
+        's3:GetObject',
+        's3:ListBucket',
+        's3:GetBucketLocation'
       ],
-      resources: [stackConfig.baseRole.roleArn]
+      resources: [
+        stackConfig.modelArtifactBucket.bucketArn,
+        `${stackConfig.modelArtifactBucket.bucketArn}/*`
+      ]
     }));
 
-    // Add model-specific permissions
-    this.executionRole.addToPolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        'sagemaker:CreateModel',
-        'sagemaker:DeleteModel',
-        'sagemaker:DescribeModel',
-        'ecr:GetAuthorizationToken',
-        'ecr:BatchCheckLayerAvailability',
-        'ecr:GetDownloadUrlForLayer',
-        'ecr:BatchGetImage'
-      ],
-      resources: ['*']
-    }));
-
-    // Grant KMS permissions
+    // Grant the execution role permission to use the KMS key for bucket encryption
     stackConfig.encryptionKey.grantDecrypt(this.executionRole);
 
-    const s3ArtifactKey: string = 'models/model/model.tar.gz'
+    // Grant explicit access to the model artifact bucket
+    stackConfig.modelArtifactBucket.grantRead(this.executionRole);
+
     // Create SageMaker models from configuration
     for (const modelConfig of stackConfig.models) {
+      // Determine the model artifact path dynamically
+      // First check if artifactKey is provided from the model config
+      // Default to a standard path if not specified
+      const modelArtifactPath = modelConfig.artifactKey || 'models/model-a/model/model.tar.gz';
+      
+      // Ensure the path starts with 'models/' as the root folder
+      const normalizedPath = modelArtifactPath.startsWith('models/') 
+        ? modelArtifactPath 
+        : `models/${modelArtifactPath}`;
+        
+      // Create a properly formatted S3 URL for the model artifact
+      const modelDataUrl = `s3://${stackConfig.modelArtifactBucket.bucketName}/${normalizedPath}`;
+      
+      console.log(`Creating model ${modelConfig.modelName} with artifact at: ${modelDataUrl}`);
+      
       const model = new sagemaker.CfnModel(this, `Model-${modelConfig.modelName}`, {
         modelName: `${this.projectPrefix}-${modelConfig.modelName}`,
         executionRoleArn: this.executionRole.roleArn,
         primaryContainer: {
           image: modelConfig.image,
-          modelDataUrl: s3ArtifactKey || `s3://${stackConfig.modelArtifactBucket.bucketName}/${modelConfig.artifactKey}`,
+          modelDataUrl: modelDataUrl,
           environment: {
             MODEL_SERVER_TIMEOUT: '3600',
             ...modelConfig.environment
@@ -100,7 +111,7 @@ export class SageMakerModelStack extends BaseStack {
     // Export model names and ARNs
     this.models.forEach((model, name) => {
       new cdk.CfnOutput(this, `Model${name}Arn`, {
-        value: model.attrId,
+        value: model.ref,  // Use 'ref' which returns the model ARN
         exportName: `${this.projectPrefix}-model-${name}-arn`
       });
     });

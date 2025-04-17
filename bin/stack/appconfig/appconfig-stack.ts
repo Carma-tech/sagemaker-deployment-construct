@@ -26,6 +26,7 @@ interface AppConfigStackProps {
   existingApplicationId?: string;
   existingEnvironmentId?: string;
   existingProfileId?: string;
+  Name?: string;
 }
 
 export class AppConfigStack extends BaseStack {
@@ -37,7 +38,9 @@ export class AppConfigStack extends BaseStack {
   public readonly lambdaRole: iam.Role;
 
   constructor(scope: Construct, props: StackCommonProps, stackConfig: AppConfigStackProps) {
-    super(scope, 'AppConfigStack', props, stackConfig);
+    // Use the Name from stackConfig if provided, otherwise use a consistent naming convention
+    const stackName = stackConfig.Name || `${props.projectPrefix}-appconfig`;
+    super(scope, stackName, props, stackConfig);
 
     // Create AppConfig Application
     this.appConfigApplication = new appconfig.CfnApplication(this, 'Application', {

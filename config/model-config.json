@@ -35,7 +35,7 @@
   "modelList": [
     {
       "ModelName": "text-classification-model",
-      "ModelS3Key": "models/text-classification/model.tar.gz",
+      "ModelS3Key": "models/model-a/model/model.tar.gz",
       "ModelDockerImage": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.5.1-cpu-py311-ubuntu22.04-sagemaker",
       "VariantName": "PrimaryVariant",
       "VariantWeight": 1,

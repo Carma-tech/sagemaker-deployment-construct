@@ -118,6 +118,7 @@ async function main() {
     appConfigStack = new AppConfigStack(app, 
       stackCommonProps,
       {
+        Name: `${projectPrefix}-appconfig`,
         configBucket: baseInfraStack.configBucket,
         encryptionKey: baseInfraStack.encryptionKey,
         applicationName: stackCommonProps.appConfig.AppConfig.ApplicationName,
@@ -140,6 +141,7 @@ async function main() {
     appConfigStack = new AppConfigStack(app, 
       stackCommonProps,
       {
+        Name: `${projectPrefix}-appconfig`,
         configBucket: baseInfraStack.configBucket,
         encryptionKey: baseInfraStack.encryptionKey,
         applicationName: stackCommonProps.appConfig.AppConfig.ApplicationName,

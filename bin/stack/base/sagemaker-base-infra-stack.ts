@@ -67,7 +67,8 @@ export class SageMakerBaseInfraStack extends BaseStack {
         new BucketDeployment(this, 'DeployConfigFiles', {
           sources: [Source.asset(configDirPath)],
           destinationBucket: this.configBucket,
-          destinationKeyPrefix: 'config'
+          destinationKeyPrefix: 'config',
+          memoryLimit: 512  // Increase Lambda memory for config files
         });
         console.log(`Deployed configuration files from ${configDirPath} to S3`);
       } catch (error) {
@@ -75,13 +76,32 @@ export class SageMakerBaseInfraStack extends BaseStack {
       }
     }
 
-    // Deploy model artifact if exists
-    if (fs.existsSync(join(__dirname, '../../../models/model-a/model/model.tar.gz'))) {
-      new BucketDeployment(this, 'DeployModelFiles', {
-        sources: [Source.asset(join(__dirname, '../../../models/model-a/model'))],
-        destinationBucket: this.modelArtifactBucket,
-        destinationKeyPrefix: 'models/text-classification'
-      });
+    // Deploy model artifacts from the models directory if it exists
+    const modelsDirPath = join(__dirname, '../../../models');
+    if (fs.existsSync(modelsDirPath)) {
+      try {
+        // Create output showing we're attempting to deploy model files
+        console.log(`Attempting to deploy model files from ${modelsDirPath}`);
+
+        // List all available model directories
+        const modelDirs = fs.readdirSync(modelsDirPath).filter(dir =>
+          fs.statSync(join(modelsDirPath, dir)).isDirectory()
+        );
+        console.log(`Found model directories: ${modelDirs.join(', ')}`);
+
+        // Deploy model files with increased memory for Lambda function
+        new BucketDeployment(this, 'DeployModelFiles', {
+          sources: [Source.asset(modelsDirPath)],
+          destinationBucket: this.modelArtifactBucket,
+          destinationKeyPrefix: 'models',
+          memoryLimit: 2048,  // Maximum Lambda memory
+          prune: false        // Don't delete existing files in the destination
+        });
+      } catch (error) {
+        console.warn(`Failed to deploy model files: ${error}`);
+      }
+    } else {
+      console.log(`Models directory does not exist at ${modelsDirPath}`);
     }
 
     this.sagemakerBaseRole = new iam.Role(this, 'SageMakerBaseRole', {
