@@ -67,7 +67,7 @@ export class APITestingStack extends BaseStack {
                 ConfigurationProfileId: dynamicConfig.ConfigurationProfileId,
                 // ClientId: 'client-1',
                 ParameterKey: 'sageMakerEndpointName',
-                RequiredMinimumPollIntervalInSeconds: 30,
+                RequiredMinimumPollIntervalInSeconds: 30, // Changed from string to number
             },
         });
 
@@ -77,7 +77,7 @@ export class APITestingStack extends BaseStack {
               ApplicationId: dynamicConfig.ApplicationId,
               EnvironmentId: dynamicConfig.EnvironmentId,
               ConfigurationProfileId: dynamicConfig.ConfigurationProfileId,
-              RequiredMinimumPollIntervalInSeconds: 30,
+              RequiredMinimumPollIntervalInSeconds: 30, // Changed from string to number
               ParameterKey: 'testTriggerSnsTopicName'
             },
           });
@@ -85,7 +85,7 @@ export class APITestingStack extends BaseStack {
         const topicName = dynamicTopicResource.getAttString('ParameterValue');
 
         const snsTopic = this.createSnsTopic(topicName);
-        // this.putParameter('testTriggerSnsTopicName', snsTopic.topicName);
+        this.putParameter('testTriggerSnsTopicName', snsTopic.topicName);
 
         const role = this.createLambdaRole('TestTrigger-Lambda');
         // const apiEndpoint: string = this.getParameter('apiEndpoint');
@@ -102,7 +102,8 @@ export class APITestingStack extends BaseStack {
     }
 
     private createSnsTopic(name: string): sns.Topic {
-        const topic = new sns.Topic(this, name, {
+        // Use a static ID instead of the dynamic name
+        const topic = new sns.Topic(this, 'TestTriggerTopic', {
             displayName: `${this.projectPrefix}-${name}-Topic`,
             topicName: `${this.projectPrefix}-${name}-Topic`,
         });

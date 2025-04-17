@@ -1,26 +1,28 @@
 {
     "Project": {
-        "Name": "TextClassificationv1",
-        "Stage": "MLv1",
-        "Account": "266735847556",
-        "Region": "us-east-1",
-        "Profile": "default"
+        "Name": "SageMakerDeployment",
+        "Stage": "Dev",
+        "Account": "717918134056",
+        "Region": "us-east-1"
     },
     "DynamicConfig": {
-        "ApplicationId": "nxcdf98",
-        "EnvironmentId": "q3cgmp2",
-        "ConfigurationProfileId": "2q8l51s",
-        "DeploymentStrategyId": "ds-0a1b2c3d4e5f6g7h8"
+        "ApplicationId": "APP_CONFIG_APPLICATION_ID",
+        "EnvironmentId": "ENV_ID",
+        "ConfigurationProfileId": "PROFILE_ID"
     },
     "Stack": {
         "AppConfigOperational": {
-            "Name": "AppConfigOperationalStackv1",
-            "ApplicationName": "ModelConfigApp",
-            "EnvironmentName": "ProdEnv",
-            "ConfigurationProfileName": "ModelConfigProfile",
-            "DeploymentStrategyName": "RollingStrategy",
-            "DeploymentDurationInMinutes": 10,
-            "GrowthFactor": 25
+            "Name": "AppConfigOperationalStack",
+            "ApplicationName": "SageMakerConfig",
+            "EnvironmentName": "Production",
+            "ConfigurationProfileName": "ModelParameters",
+            "DeploymentStrategyName": "RollingDeploy",
+            "CreateConfigBucket": true,
+            "ConfigBucketName": "sagemaker-deployment-configs",
+            "InitialConfigPath": "config/initial",
+            "EnableAutoSync": true,
+            "DeploymentDurationInMinutes": 5,
+            "GrowthFactor": 20
         },
         "ModelTraining": {
             "Name": "ModelTrainingStackv1",
@@ -29,46 +31,23 @@
             "TrainingConfig": "config/model-training-config.yaml"
         },
         "ModelArchiving": {
-            "Name": "ModelArchivingStackv1",
-            "BucketBaseName": "model-archivingv1",
-            "ModelList": [
-                {
-                    "ModelLocalPath": "models/model-a/model",
-                    "ModelS3Key": "models/model-a/model"
-                }
-            ]
+            "Name": "ModelArchivingStack",
+            "CreateModelArtifactBucket": true,
+            "ModelArtifactBucketName": "sagemaker-deployment-model-artifacts",
+            "CreateModelArchiveBucket": true,
+            "ModelArchiveBucketName": "sagemaker-deployment-model-archives"
         },
         "ModelServing": {
             "Name": "ModelServingStack",
-            "ModelList": [
-                {
-                    "ModelName": "Model-A-v1",
-                    "ModelS3Key": "models/model-a/model",
-                    "ModelDockerImage": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.5.1-cpu-py311-ubuntu22.04-sagemaker",
-                    "ModelDockerImage-Desc": "SageMaker Prebuilt Docker Images: https://github.com/aws/deep-learning-containers/blob/master/available_images.md",
-                    "VariantName": "Model-A-v1",
-                    "VariantWeight": 1,
-                    "InstanceCount": 1,
-                    "InstanceType": "ml.m5.2xlarge",
-                    "ServerlessConfig": {
-                        "MaxConcurrency": 50,
-                        "MemorySizeInMb": 2048
-                    },
-                    "ModelServerWorkers": "1",
-                    "ModelServerWorkers-Desc": "Please update this value according to InstanceType's vCPU",
-                    "AutoScalingEnable": false,
-                    "AutoScalingMinCapacity": 1,
-                    "AutoScalingMaxCapacity": 2,
-                    "AutoScalingTargetInvocation": 50
-                }
+            "SingleEndpointWithVariants": true,
+            "EnableModelMonitoring": true,
+            "SubscriptionEmails": [
+                "youremail@example.com"
             ],
-            "EndpointConfigName": "TextClassification-Endpointv1",
-            "BucketBaseName": "model-serving-v1",
-            "DataLoggingEnable": true,
-            "DataLoggingS3Key": "data-capture",
-            "DataLoggingPercentage": 30,
-            "EndpointName": "TextClassificationV1",
-            "Deploy": true
+            "EndpointConfigName": "ModelEndpointConfig",
+            "EndpointName": "ModelEndpoint",
+            "Deploy": true,
+            "UpdateAppConfig": true
         },
         "ModelTransformJob": {
             "Name": "ModelTransformJobStackv1",
@@ -83,22 +62,18 @@
             ]
         },
         "APIHosting": {
-            "Name": "APIHostingStackv1",
-            "APIGatewayName": "APIHosting",
-            "ResourceName": "textv1",
-            "ResourceMethod": "POST",
-            "LambdaFunctionName": "TextClassificationPredictv1"
+            "Name": "APIHostingStack",
+            "ApiName": "ModelAPI",
+            "StageName": "dev"
         },
         "MonitorDashboard": {
-            "Name": "MonitorDashboardStackv1",
-            "DashboardName": "MonitorDashboardv1",
-            "SubscriptionEmails": [],
-            "SubscriptionEmails-Example": [
-                "abc@amazon.com"
-            ],
-            "ApiGatewayOverallCallThreshold": 50,
-            "ApiGatewayError4xxCallThreshold": 10,
-            "ApiGatewayError5xxCallThreshold": 10
+            "Name": "MonitorDashboardStack",
+            "DashboardName": "ModelMonitoringDashboard",
+            "AppConfig": {
+                "ApplicationId": "APP_CONFIG_APPLICATION_ID",
+                "EnvironmentId": "ENV_ID",
+                "ConfigurationProfileId": "PROFILE_ID"
+            }
         },
         "CICDPipeline": {
             "Name": "CICDPipelineStackv1",
@@ -107,22 +82,24 @@
             "ConnectionArn": "arn:aws:codeconnections:us-east-1:717918134056:connection/7e4bcd1d-6aea-4dee-98e5-edf22f6cadb0"
         },
         "APITesting": {
-            "Name": "APITestingStackv1",
-            "SNSTopicName": "TestTriggerv1",
-            "LambdaFunctionName": "TestTriggerv1",
-            "TestClientCount": 10
+            "Name": "APITestingStack",
+            "ScheduleEnabled": true,
+            "ScheduleName": "ModelAPITesting",
+            "ScheduleRate": "rate(1 hour)",
+            "TestConfigFile": "test_config.json"
         },
         "TesterDashboard": {
-            "Name": "TesterDashboardStackv1",
-            "DashboardName": "TesterDashboardv1"
+            "Name": "TesterDashboardStack",
+            "DashboardName": "TesterDashboard"
         },
         "SecurityOperationalEnhancements": {
-            "Name": "SecurityOperationalStackv1",
-            "BucketBaseName": "security-operational-bucket"
+            "Name": "SecurityOperationalEnhancementsStack",
+            "EnableVPCEndpoints": true,
+            "EnableKMSEncryption": true
         },
         "ModelWorkflow": {
-            "Name": "ModelWorkflowStackv1",
-            "ConfigBucketName": "model-artifacts-bucket"
+            "Name": "ModelWorkflowStack",
+            "WorkflowName": "ModelDeploymentWorkflow"
         }
     }
 }

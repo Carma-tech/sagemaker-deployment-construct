@@ -9,6 +9,7 @@ cdk.out
 .DS_Store
 .vscode/
 model.tar.gz
+*.tar.gz
 *.pth
 
 # Byte-compiled / optimized / DLL files
@@ -44,9 +45,12 @@ coverage.xml
 .pytest_cache/
 cover/
 new_requirements.txt
+requirements_design.txt
 
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
 *.idea/
 *.iml
+.qodo
+

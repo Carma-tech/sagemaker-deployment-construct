@@ -20,6 +20,7 @@ async function loadConfigFromS3(bucket: string, key: string): Promise<any> {
     const bodyContents = await streamToString(response.Body as Readable);
     const config = JSON.parse(bodyContents);
     config['InfraConfigFile'] = `s3://${bucket}/${key}`;
+    console.log("Loaded configuration from S3:", config)
     return config;
   } catch (err: any) {
     console.error("Error loading configuration from S3:", err);

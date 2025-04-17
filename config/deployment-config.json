@@ -1,0 +1,51 @@
+{
+  "environments": {
+    "dev": {
+      "account": "266735847556",
+      "region": "us-east-1",
+      "stage": "dev",
+      "appConfigSuffix": "dev",
+      "enableMonitoring": false,
+      "enableWorkflow": false,
+      "createNewAppConfig": true,
+      "inferenceType": "async",
+      "asyncConfig": {
+        "maxConcurrentInvocationsPerInstance": 5,
+        "expiresInSeconds": 3600
+      },
+      "serverlessConfig": {
+        "memorySize": 2048,
+        "maxConcurrency": 5
+      }
+    },
+    "test": {
+      "account": "266735847556",
+      "region": "us-east-1",
+      "stage": "test",
+      "appConfigSuffix": "test",
+      "enableMonitoring": true,
+      "enableWorkflow": true,
+      "createNewAppConfig": true
+    },
+    "prod": {
+      "account": "266735847556",
+      "region": "us-east-1",
+      "stage": "prod",
+      "appConfigSuffix": "prod",
+      "enableMonitoring": true,
+      "enableWorkflow": true,
+      "createNewAppConfig": false,
+      "existingAppConfigAppId": "",
+      "existingAppConfigEnvId": "",
+      "existingAppConfigProfileId": ""
+    }
+  },
+  "project": {
+    "name": "sagemaker-deployment",
+    "description": "SageMaker model deployment construct"
+  },
+  "modelArtifacts": {
+    "s3KeyPrefix": "models/",
+    "enableVersioning": true
+  }
+}

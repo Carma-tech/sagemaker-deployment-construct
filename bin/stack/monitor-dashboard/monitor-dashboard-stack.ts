@@ -31,11 +31,10 @@ export class MonitorDashboardStack extends BaseStack {
       period: cdk.Duration.minutes(1),
     });
 
+    // Import required roles and functions
     const lambdaRoleArn = cdk.Fn.importValue('LambdaExecutionAppconfigRoleArn');
-    // Convert the role ARN string to an IRole
     const lambdaRole = iam.Role.fromRoleArn(this, 'ImportedLambdaRole', lambdaRoleArn);
 
-    // Import appconfig fetcher lambda from appconfig stack
     const appConfigParameterFetcher = lambda.Function.fromFunctionAttributes(this,
       'AppconfigParameterFetcherRole',
       {
@@ -49,8 +48,8 @@ export class MonitorDashboardStack extends BaseStack {
       role: lambdaRole
     });
 
+    // Get endpoint name from dynamic configuration
     const dynamicConfig = this.commonProps.appConfig.DynamicConfig;
-
     const dynamicParameterResource = new cdk.CustomResource(this, 'SageMakerEndpointParameter', {
       serviceToken: provider.serviceToken,
       properties: {
@@ -62,45 +61,32 @@ export class MonitorDashboardStack extends BaseStack {
       },
     });
 
-    // Retrieve the SageMaker endpoint name from SSM (set by the serving stack)
-    // const endpointName = this.getParameter('sageMakerEndpointName');
     const endpointName = dynamicParameterResource.getAttString('ParameterValue');
 
-
-    // Optionally, if your config contains model list details, you can iterate over them.
-    // For now, we assume one endpoint with variants, and we add enhanced metrics.
-    // -----------------------------------------------------------------------
-    // Widget: SageMaker Endpoint Instance Metrics (CPU, Memory, Disk)
+    // Create enhanced monitoring widgets
+    
+    // 1. Instance Metrics
     const instanceMetrics = this.dashboard.createEndpointInstanceMetrics(
       endpointName,
-      'VariantA', // Replace with dynamic variant if needed.
-      ['CPUUtilization', 'MemoryUtilization', 'DiskUtilization'],
+      'VariantA',
+      ['CPUUtilization', 'MemoryUtilization', 'DiskUtilization', 'GPUUtilization', 'GPUMemoryUtilization'],
       { statistic: 'Average', unit: cloudwatch.Unit.PERCENT }
     );
     this.dashboard.addWidgets(
       this.dashboard.createWidget('Endpoint Instance Utilization', instanceMetrics, 12)
     );
 
-    // Widget: Inference Latency & Throughput
-    // In this example, we assume the endpoint publishes ModelLatency, OverheadLatency, and Invocations metrics.
+    // 2. Performance Metrics
     const latencyMetric = new cloudwatch.Metric({
       metricName: 'ModelLatency',
       namespace: '/aws/sagemaker/Endpoints',
       dimensionsMap: { EndpointName: endpointName, VariantName: 'VariantA' },
-      statistic: 'Average',
+      statistic: 'p90',
       unit: cloudwatch.Unit.MILLISECONDS,
       period: cdk.Duration.minutes(1),
-      label: 'Model Latency',
+      label: 'Model Latency (p90)',
     });
-    const overheadLatencyMetric = new cloudwatch.Metric({
-      metricName: 'OverheadLatency',
-      namespace: '/aws/sagemaker/Endpoints',
-      dimensionsMap: { EndpointName: endpointName, VariantName: 'VariantA' },
-      statistic: 'Average',
-      unit: cloudwatch.Unit.MILLISECONDS,
-      period: cdk.Duration.minutes(1),
-      label: 'Overhead Latency',
-    });
+
     const invocationsMetric = new cloudwatch.Metric({
       metricName: 'Invocations',
       namespace: 'AWS/SageMaker',
@@ -108,15 +94,14 @@ export class MonitorDashboardStack extends BaseStack {
       statistic: 'Sum',
       unit: cloudwatch.Unit.COUNT,
       period: cdk.Duration.minutes(1),
-      label: 'Invocations',
+      label: 'Total Invocations',
     });
 
     this.dashboard.addWidgets(
-      this.dashboard.createLeftRightWidget('Inference Latency', [latencyMetric], [overheadLatencyMetric], 12),
-      this.dashboard.createWidget('Endpoint Throughput', [invocationsMetric], 12)
+      this.dashboard.createLeftRightWidget('Performance Metrics', [latencyMetric], [invocationsMetric], 24)
     );
 
-    // Widget: Error Rates (Invocation 4XX and 5XX errors)
+    // 3. Error Metrics
     const error4xxMetric = new cloudwatch.Metric({
       metricName: 'Invocation4XXErrors',
       namespace: 'AWS/SageMaker',
@@ -126,6 +111,7 @@ export class MonitorDashboardStack extends BaseStack {
       period: cdk.Duration.minutes(1),
       label: '4XX Errors',
     });
+
     const error5xxMetric = new cloudwatch.Metric({
       metricName: 'Invocation5XXErrors',
       namespace: 'AWS/SageMaker',
@@ -135,66 +121,96 @@ export class MonitorDashboardStack extends BaseStack {
       period: cdk.Duration.minutes(1),
       label: '5XX Errors',
     });
+
     this.dashboard.addWidgets(
-      this.dashboard.createWidget('Endpoint Error Rates', [error4xxMetric, error5xxMetric], 12)
+      this.dashboard.createWidget('Error Rates', [error4xxMetric, error5xxMetric], 12)
     );
 
-    // Optional: Widget for Custom Model Accuracy (if published as custom metric)
+    // 4. Model Metrics (if available)
     const accuracyMetric = new cloudwatch.Metric({
       metricName: 'ModelAccuracy',
       namespace: 'Custom/MachineLearning',
       dimensionsMap: { EndpointName: endpointName },
       statistic: 'Average',
       unit: cloudwatch.Unit.PERCENT,
-      period: cdk.Duration.minutes(1),
+      period: cdk.Duration.minutes(5),
       label: 'Model Accuracy',
     });
+
+    const predictionLatencyMetric = new cloudwatch.Metric({
+      metricName: 'PredictionLatency',
+      namespace: 'Custom/MachineLearning',
+      dimensionsMap: { EndpointName: endpointName },
+      statistic: 'Average',
+      unit: cloudwatch.Unit.MILLISECONDS,
+      period: cdk.Duration.minutes(1),
+      label: 'Prediction Latency',
+    });
+
     this.dashboard.addWidgets(
-      this.dashboard.createWidget('Model Accuracy', [accuracyMetric], 12)
+      this.dashboard.createWidget('Model Metrics', [accuracyMetric, predictionLatencyMetric], 12)
     );
 
-    // Create CloudWatch Alarms for Critical Metrics
-
-    // Alarm for High Latency
+    // Set up CloudWatch Alarms
+    
+    // 1. Latency Alarm
     const latencyAlarm = latencyMetric.createAlarm(this, 'HighLatencyAlarm', {
       alarmName: `${this.projectPrefix}-HighLatencyAlarm`,
-      threshold: 1000, // Adjust threshold as needed (ms)
+      threshold: stackConfig.Alarms?.LatencyThresholdMs || 1000,
       evaluationPeriods: 3,
+      datapointsToAlarm: 2,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-      alarmDescription: 'Alarm when model latency exceeds threshold',
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'Alert when model inference latency is too high',
     });
-    // Set up SNS Topic for alarms (using a topic from config or create one)
-    const alarmTopic = new sns.Topic(this, 'EnhancedAlarmTopic', {
-      displayName: `${this.projectPrefix}-EnhancedAlarmTopic`,
-      topicName: `${this.projectPrefix}-EnhancedAlarmTopic`,
-    });
-    // Subscribe emails if provided in config
-    (stackConfig.SubscriptionEmails || []).forEach((email: string) =>
-      alarmTopic.addSubscription(new subscriptions.EmailSubscription(email))
-    );
-    latencyAlarm.addAlarmAction(new cw_actions.SnsAction(alarmTopic));
 
-    // Alarm for High Error Rates
-    const errorAlarm = error5xxMetric.createAlarm(this, 'HighErrorAlarm', {
-      alarmName: `${this.projectPrefix}-HighErrorAlarm`,
-      threshold: 5, // Adjust threshold as needed
+    // 2. Error Rate Alarm
+    const errorRateAlarm = error5xxMetric.createAlarm(this, 'HighErrorRateAlarm', {
+      alarmName: `${this.projectPrefix}-HighErrorRateAlarm`,
+      threshold: stackConfig.Alarms?.ErrorRateThreshold || 5,
       evaluationPeriods: 3,
+      datapointsToAlarm: 2,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-      alarmDescription: 'Alarm when 5XX error count is high',
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'Alert when endpoint error rate is too high',
     });
-    errorAlarm.addAlarmAction(new cw_actions.SnsAction(alarmTopic));
 
-    // Add Alarm Widgets to Dashboard
+    // 3. Low Invocation Alarm
+    const lowInvocationAlarm = invocationsMetric.createAlarm(this, 'LowInvocationAlarm', {
+      alarmName: `${this.projectPrefix}-LowInvocationAlarm`,
+      threshold: stackConfig.Alarms?.MinInvocationsPerMinute || 1,
+      evaluationPeriods: 5,
+      datapointsToAlarm: 4,
+      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+      alarmDescription: 'Alert when endpoint invocation rate is too low',
+    });
+
+    // Set up SNS Topic for alarms
+    const alarmTopic = new sns.Topic(this, 'ModelMonitoringAlarmTopic', {
+      displayName: `${this.projectPrefix}-ModelMonitoringAlarms`,
+      topicName: `${this.projectPrefix}-model-monitoring-alarms`,
+    });
+
+    // Add email subscriptions if configured
+    if (stackConfig.AlarmNotifications?.EmailAddresses) {
+      stackConfig.AlarmNotifications.EmailAddresses.forEach((email: string) => {
+        alarmTopic.addSubscription(new subscriptions.EmailSubscription(email));
+      });
+    }
+
+    // Add alarm actions
+    [latencyAlarm, errorRateAlarm, lowInvocationAlarm].forEach(alarm => {
+      alarm.addAlarmAction(new cw_actions.SnsAction(alarmTopic));
+      alarm.addOkAction(new cw_actions.SnsAction(alarmTopic));
+    });
+
+    // Add Alarm Status Widgets
     this.dashboard.addWidgets(
-      new cloudwatch.AlarmWidget({
-        title: 'Latency Alarm',
-        alarm: latencyAlarm,
-        width: 12,
-      }),
-      new cloudwatch.AlarmWidget({
-        title: 'Error Alarm',
-        alarm: errorAlarm,
-        width: 12,
+      new cloudwatch.AlarmStatusWidget({
+        title: 'Model Performance Alarms',
+        alarms: [latencyAlarm, errorRateAlarm, lowInvocationAlarm],
+        width: 24,
       })
     );
   }

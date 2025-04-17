@@ -1,0 +1,27 @@
+{
+  "Training": {
+    "JobNamePrefix": "pytorch-text-classification",
+    "Parameters": {
+      "dataset": "text-classification-dataset",
+      "device": "cpu",
+      "num_epochs": 10,
+      "batch_size": 32,
+      "embed_dim": 300,
+      "learning_rate": 0.001,
+      "save_model_path": "/opt/ml/model/model.pth",
+      "dictionary_path": "/opt/ml/model/vocab.json"
+    },
+    "Resources": {
+      "instance_type": "ml.m5.large",
+      "instance_count": 1,
+      "volume_size_gb": 30,
+      "max_runtime_seconds": 3600
+    },
+    "Container": {
+      "image": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.5.1-cpu-py311-ubuntu22.04-sagemaker"
+    },
+    "Output": {
+      "s3_path_prefix": "models/text-classification"
+    }
+  }
+}

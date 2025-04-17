@@ -1,328 +1,443 @@
-Below is an example README that documents the updated project requirements, architecture, and deployment steps. You can adjust sections as needed for your project.
+# SageMaker Deployment Construct
 
----
+A comprehensive AWS CDK-based construct library for deploying machine learning models on Amazon SageMaker with support for real-time, asynchronous, and serverless inference types.
 
-# TextClassification ML Deployment Construct
-
-This repository implements an AWS CDK v2-based infrastructure for deploying, serving, and monitoring machine learning models on AWS SageMaker. The project leverages dynamic configuration using AWS AppConfig to update model parameters at runtime without requiring redeployments. It includes multiple stacks for model training, archiving, serving, API hosting, testing, monitoring, and more.
-
----
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Features](#features)
 - [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Dynamic Configuration with AWS AppConfig](#dynamic-configuration-with-aws-appconfig)
-- [Prerequisites](#prerequisites)
-- [Setup and Installation](#setup-and-installation)
+- [Installation](#installation)
 - [Configuration](#configuration)
-- [Deployment](#deployment)
-- [Testing](#testing)
+  - [Deployment Configuration](#deployment-configuration)
+  - [Model Configuration](#model-configuration)
+  - [Inference Types](#inference-types)
 - [Usage](#usage)
+  - [Basic Deployment](#basic-deployment)
+  - [Environment-Based Deployment](#environment-based-deployment)
+  - [Asynchronous Inference](#asynchronous-inference)
+  - [Serverless Inference](#serverless-inference)
+  - [Multiple Model Variants](#multiple-model-variants)
+- [Stack Descriptions](#stack-descriptions)
+- [Utility Modules](#utility-modules)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 - [License](#license)
-
----
 
 ## Overview
 
-This project provides a modular, reusable infrastructure for serving machine learning models using AWS SageMaker. It supports dynamic configuration using AWS AppConfig so that model parameters, endpoints, and operational settings can be updated on the fly. The project is built using the AWS Cloud Development Kit (CDK) in TypeScript and comprises several stacks, including:
+This project provides a modular AWS CDK construct library that makes it easy to deploy, configure, and monitor machine learning models on Amazon SageMaker. It supports multiple deployment options including real-time endpoints, asynchronous inference, and serverless inference, with dynamic configuration management via AWS AppConfig.
 
-- **ModelTrainingStack:** (Handles model training jobs.)
-- **ModelArchivingStack:** (Archives trained models to an S3 bucket.)
-- **ModelServingStack:** (Deploys models on SageMaker endpoints.)
-- **APIHostingStack:** (Creates an API Gateway integrated with Lambda for model predictions.)
-- **MonitorDashboardStack:** (Creates CloudWatch dashboards and alarms to monitor the endpoints.)
-- **APITestingStack & TesterDashboardStack:** (Simulate client testing and provide testing dashboards.)
-- **AppConfigOperationalStack:** (Provisions AWS AppConfig resources for dynamic configuration.)
-- **SecurityOperationalEnhancementsStack:** (Implements security best practices and operational enhancements.)
-- **ModelWorkflowStack:** (Orchestrates workflows such as model retraining and redeployment.)
+## Features
 
----
+- **Multiple Inference Types**: Support for real-time, asynchronous, and serverless inference
+- **Dynamic Configuration**: Use AWS AppConfig to manage model configurations without redeployment
+- **Multi-Environment Support**: Easily deploy to development, testing, and production environments
+- **Security Best Practices**: Built-in encryption, fine-grained permissions, and secure communication
+- **Comprehensive Monitoring**: CloudWatch dashboards, alarms, and metrics for operational visibility
+- **Workflow Automation**: Step Functions workflows for model retraining and deployment
+- **Multiple Model Variants**: Support for deploying multiple model variants under a single endpoint
 
 ## Architecture
 
-The solution uses a multi-stack architecture where each stack is responsible for a specific part of the ML deployment lifecycle:
-
-- **Dynamic Configuration:**  
-  AWS AppConfig is used to host and manage configuration data (such as endpoint names, bucket names, and operational thresholds). A Lambda-backed custom resource queries AppConfig to fetch these parameters during deployment.
-
-- **Inter-Stack Communication:**  
-  Instead of relying on SSM Parameter Store, dynamic values are fetched directly from AppConfig, ensuring that updates can be applied without redeploying the entire infrastructure.
-
-- **Monitoring & Testing:**  
-  CloudWatch dashboards and alarms are set up for real-time monitoring. Separate stacks simulate API testing and aggregate metrics for further analysis.
-
-- **CI/CD Pipeline:**  
-  (Optional) A CI/CD stack integrates with CodePipeline/CodeBuild to automate deployments.
-
----
-
-## Project Structure
+The solution uses a modular, multi-stack architecture where each stack is responsible for a specific part of the ML deployment lifecycle:
 
 ```
-amazon-sagemaker-model-serving-using-aws-cdk-v2/
-├── bin/
-│   ├── app-main.ts                   # Main CDK application entry point.
-│   ├── stack/
-│   │   ├── api-hosting/              # API hosting stack (API Gateway & Lambda integration).
-│   │   ├── appconfig/                # AppConfigOperationalStack.
-│   │   ├── cicd-pipeline/            # (Optional) CI/CD Pipeline stack.
-│   │   ├── model-serving/            # ModelServingStack, ModelTrainingStack, etc.
-│   │   ├── monitor-dashboard/        # MonitorDashboardStack, TesterDashboardStack.
-│   │   └── security/                 # SecurityOperationalEnhancementsStack.
-├── codes/
-│   ├── lambda/
-│   │   ├── api-hosting-predictor/     # Lambda code for API hosting predictor.
-│   │   ├── api-testing-tester/        # Lambda code for API testing.
-│   │   └── appconfig/
-│   │       └── parameter-fetcher/     # Lambda code to fetch parameters from AWS AppConfig.
-├── config/
-│   └── app-config.json               # External configuration file.
-├── lib/
-│   ├── base/
-│   │   └── base-stack.ts             # Base stack class with common methods.
-│   └── utils/
-│       └── config-loaders.ts         # Configuration loader (supports loading from S3).
-├── package.json
-├── README.md
-└── tsconfig.json
+┌───────────────────┐     ┌───────────────────┐     ┌───────────────────┐
+│                   │     │                   │     │                   │
+│  Base Infra Stack │────▶│  AppConfig Stack  │────▶│  SageMaker Model  │
+│                   │     │                   │     │      Stack        │
+└───────────────────┘     └───────────────────┘     └──────────┬────────┘
+                                                               │
+                                                               ▼
+┌───────────────────┐     ┌───────────────────┐     ┌───────────────────┐
+│                   │     │                   │     │                   │
+│   Workflow Stack  │◀────│ Monitoring Stack  │◀────│ SageMaker Endpoint│
+│    (Optional)     │     │   (Optional)      │     │      Stack        │
+└───────────────────┘     └───────────────────┘     └───────────────────┘
 ```
 
----
+## Installation
 
-## Dynamic Configuration with AWS AppConfig
+### Prerequisites
 
-Dynamic configuration allows you to update model parameters (such as SageMaker endpoint names, bucket names, thresholds, etc.) without redeploying your stacks. The key components include:
+- Node.js 18.x or later
+- AWS CDK v2
+- AWS CLI configured with appropriate permissions
+- TypeScript 5.x or later
 
-- **AppConfigOperationalStack:**  
-  Provisions an AppConfig Application, Environment, Configuration Profile, and Deployment Strategy using parameters defined in your external configuration file.
+### Setup
 
-- **Lambda Parameter Fetcher:**  
-  A Lambda function (`codes/lambda/appconfig/parameter-fetcher/handler.py`) is used as a custom resource to retrieve dynamic configuration values from AppConfig. This function starts a configuration session to obtain a configuration token and then retrieves the latest configuration.
-
-- **Custom Resource in Stacks:**  
-  Stacks (such as ModelServingStack, APIHostingStack, MonitorDashboardStack, and APITestingStack) use a Lambda-backed custom resource to fetch dynamic parameters (like `sageMakerEndpointName`, `modelArtifactBucketName`, and `testTriggerSnsTopicName`) at deployment time.
-
----
-
-## Prerequisites
-
-- **AWS CDK v2** installed (recommended version 2.1005.0 or later).
-- **Node.js** (v14 or later).
-- **AWS CLI** configured with proper credentials.
-- **jq** installed (for JSON processing in shell scripts, if needed).
-
----
-
-## Setup and Installation
-
-1. **Clone the Repository:**
-
+1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/amazon-sagemaker-model-serving-using-aws-cdk-v2.git
-   cd amazon-sagemaker-model-serving-using-aws-cdk-v2
+   git clone https://github.com/your-org/sagemaker-deployment-construct.git
+   cd sagemaker-deployment-construct
    ```
 
-2. **Install Dependencies:**
-
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-3. **Bootstrap Your Environment:**
-
+3. Initialize your AWS environment (if not already done):
    ```bash
-   cdk bootstrap aws://<ACCOUNT>/<REGION> --profile <PROFILE>
+   cdk bootstrap aws://YOUR_ACCOUNT_NUMBER/YOUR_REGION
    ```
-
----
 
 ## Configuration
 
-The project uses an external configuration file (`config/app-config.json`). Below is a sample configuration that includes dynamic configuration values:
+The construct uses configuration files to manage deployment options and model configurations.
+
+### Deployment Configuration
+
+The `config/deployment-config.json` file defines environment-specific settings:
 
 ```json
 {
-    "Project": {
-        "Name": "TextClassificationv1",
-        "Stage": "MLv1",
-        "Account": "266735847556",
-        "Region": "us-east-1",
-        "Profile": "default"
+  "environments": {
+    "dev": {
+      "account": "123456789012",
+      "region": "us-east-1",
+      "stage": "dev",
+      "appConfigSuffix": "dev",
+      "enableMonitoring": false,
+      "enableWorkflow": false,
+      "createNewAppConfig": true,
+      "inferenceType": "async",
+      "asyncConfig": {
+        "maxConcurrentInvocationsPerInstance": 5,
+        "expiresInSeconds": 3600
+      },
+      "serverlessConfig": {
+        "memorySize": 2048,
+        "maxConcurrency": 5
+      }
     },
-    "DynamicConfig": {
-        "ApplicationId": "app-0a1b2c3d4e5f6g7h8",
-        "EnvironmentId": "env-0a1b2c3d4e5f6g7h8",
-        "ConfigurationProfileId": "cp-0a1b2c3d4e5f6g7h8",
-        "DeploymentStrategyId": "ds-0a1b2c3d4e5f6g7h8"
+    "test": {
+      "account": "123456789012",
+      "region": "us-east-1",
+      "stage": "test",
+      "appConfigSuffix": "test",
+      "enableMonitoring": true,
+      "enableWorkflow": true,
+      "createNewAppConfig": true
     },
-    "Stack": {
-        "AppConfigOperational": {
-            "Name": "AppConfigOperationalStackv1",
-            "ApplicationName": "ModelConfigApp",
-            "EnvironmentName": "ProdEnv",
-            "ConfigurationProfileName": "ModelConfigProfile",
-            "DeploymentStrategyName": "RollingStrategy",
-            "DeploymentDurationInMinutes": 10,
-            "GrowthFactor": 25
-        },
-        "ModelTraining": {
-            "Name": "ModelTrainingStackv1",
-            "ModelName": "text-classification-v1",
-            "Version": "v1",
-            "TrainingConfig": "config/model-training-config.yaml"
-        },
-        "ModelArchiving": {
-            "Name": "ModelArchivingStackv1",
-            "BucketBaseName": "model-archivingv1",
-            "ModelList": [
-                {
-                    "ModelLocalPath": "models/model-a/model",
-                    "ModelS3Key": "models/model-a/model"
-                }
-            ]
-        },
-        "ModelServing": {
-            "Name": "ModelServingStack",
-            "ModelList": [
-                {
-                    "ModelName": "Model-A-v1",
-                    "ModelS3Key": "models/model-a/model",
-                    "ModelDockerImage": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.5.1-cpu-py311-ubuntu22.04-sagemaker",
-                    "VariantName": "Model-A-v1",
-                    "VariantWeight": 1,
-                    "InstanceCount": 1,
-                    "InstanceType": "ml.m5.2xlarge",
-                    "ServerlessConfig": {
-                        "MaxConcurrency": 50,
-                        "MemorySizeInMb": 2048
-                    },
-                    "ModelServerWorkers": "1",
-                    "AutoScalingEnable": false,
-                    "AutoScalingMinCapacity": 1,
-                    "AutoScalingMaxCapacity": 2,
-                    "AutoScalingTargetInvocation": 50
-                }
-            ],
-            "EndpointConfigName": "TextClassification-Endpointv1",
-            "BucketBaseName": "model-serving-v1",
-            "DataLoggingEnable": true,
-            "DataLoggingS3Key": "data-capture",
-            "DataLoggingPercentage": 30,
-            "EndpointName": "TextClassificationV1",
-            "Deploy": true
-        },
-        "ModelTransformJob": {
-            "Name": "ModelTransformJobStackv1",
-            "BucketBaseName": "model-transform",
-            "ModelList": [
-                {
-                    "ModelName": "Model-A-v1",
-                    "InstanceType": "m4.xlarge",
-                    "InputPath": "models/model-a/input",
-                    "OutputPath": "models/model-a/output"
-                }
-            ]
-        },
-        "APIHosting": {
-            "Name": "APIHostingStackv1",
-            "APIGatewayName": "APIHosting",
-            "ResourceName": "textv1",
-            "ResourceMethod": "POST",
-            "LambdaFunctionName": "TextClassificationPredictv1"
-        },
-        "MonitorDashboard": {
-            "Name": "MonitorDashboardStackv1",
-            "DashboardName": "MonitorDashboardv1",
-            "SubscriptionEmails": ["abc@amazon.com"],
-            "ApiGatewayOverallCallThreshold": 50,
-            "ApiGatewayError4xxCallThreshold": 10,
-            "ApiGatewayError5xxCallThreshold": 10
-        },
-        "CICDPipeline": {
-            "Name": "CICDPipelineStackv1",
-            "RepositoryName": "amazon-sagemaker-model-serving-using-aws-cdk-v2",
-            "BranchName": "add-model-training-stack",
-            "ConnectionArn": "arn:aws:codeconnections:us-east-1:717918134056:connection/7e4bcd1d-6aea-4dee-98e5-edf22f6cadb0"
-        },
-        "APITesting": {
-            "Name": "APITestingStackv1",
-            "SNSTopicName": "TestTriggerv1",
-            "LambdaFunctionName": "TestTriggerv1",
-            "TestClientCount": 10,
-            "TestDurationInSec": 60,
-            "TestIntervalInSec": 10
-        },
-        "TesterDashboard": {
-            "Name": "TesterDashboardStackv1",
-            "DashboardName": "TesterDashboardv1"
-        },
-        "SecurityOperationalEnhancements": {
-            "Name": "SecurityOperationalStackv1",
-            "BucketBaseName": "security-operational-bucket"
-        },
-        "ModelWorkflow": {
-            "Name": "ModelWorkflowStackv1",
-            "ConfigBucketName": "model-artifacts-bucket"
-        }
+    "prod": {
+      "account": "123456789012",
+      "region": "us-east-1",
+      "stage": "prod",
+      "appConfigSuffix": "prod",
+      "enableMonitoring": true,
+      "enableWorkflow": true,
+      "createNewAppConfig": false,
+      "existingAppConfigAppId": "",
+      "existingAppConfigEnvId": "",
+      "existingAppConfigProfileId": ""
     }
+  },
+  "project": {
+    "name": "sagemaker-deployment",
+    "description": "SageMaker model deployment construct"
+  },
+  "modelArtifacts": {
+    "s3KeyPrefix": "models/",
+    "enableVersioning": true
+  }
 }
 ```
 
----
+Key configuration parameters:
 
-## Deployment
+| Parameter | Description |
+|-----------|-------------|
+| `account` | AWS account ID to deploy to |
+| `region` | AWS region to deploy to |
+| `stage` | Environment stage (dev, test, prod) |
+| `enableMonitoring` | Whether to deploy monitoring stack |
+| `enableWorkflow` | Whether to deploy workflow stack |
+| `createNewAppConfig` | Whether to create new AppConfig resources or use existing ones |
+| `inferenceType` | Type of inference endpoint to create (realtime, async, serverless) |
+| `asyncConfig` | Configuration for async inference endpoints |
+| `serverlessConfig` | Configuration for serverless inference endpoints |
 
-1. **Upload Configuration File:**  
-   Upload your updated `app-config.json` to your S3 bucket (e.g., under the key `config/app-config.json`).
+### Model Configuration
 
-2. **Set Environment Variables:**  
-   Export the following environment variables so that the configuration loader reads from S3:
+The `config/model-config.json` file defines model-specific settings:
 
-   ```bash
-   export CONFIG_BUCKET=your-config-bucket-name
-   export CONFIG_KEY=config/app-config.json
-   ```
+```json
+{
+  "modelParameters": {
+    "preprocessing": {
+      "normalization": true,
+      "featureEngineering": {
+        "textTokenization": true,
+        "stopwordRemoval": true
+      }
+    },
+    "inference": {
+      "thresholds": {
+        "classification": 0.5,
+        "confidence": 0.7
+      },
+      "batchSize": 10
+    }
+  },
+  "sageMakerEndpointName": "sagemaker-deployment-endpoint",
+  "modelList": [
+    {
+      "ModelName": "text-classification-model",
+      "ModelS3Key": "models/text-classification/v1/model.tar.gz",
+      "ModelDockerImage": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.0.0-cpu-py310",
+      "VariantName": "PrimaryVariant",
+      "VariantWeight": 1,
+      "InstanceCount": 1,
+      "InstanceType": "ml.m5.large",
+      "ModelServerWorkers": 2,
+      "ServerlessConfig": {
+        "memorySize": 2048,
+        "maxConcurrency": 5
+      }
+    }
+  ]
+}
+```
 
-3. **Bootstrap and Deploy:**  
+### Inference Types
 
-   ```bash
-   cdk bootstrap aws://<ACCOUNT>/<REGION> --profile <PROFILE>
-   cdk deploy  --all
-   ```
+The construct supports three types of inference endpoints:
 
-   Make sure to deploy the AppConfigOperationalStack first (if not already deployed) so that your AppConfig resources are provisioned, then deploy the other stacks.
+1. **Real-time Inference**:
+   - Default mode for synchronous, low-latency predictions
+   - Requires always-on instances
+   - Supports up to 10 model variants per endpoint
 
----
+2. **Asynchronous Inference**:
+   - For long-running inference requests (up to 15 minutes)
+   - Results delivered to S3 with optional SNS notifications
+   - Better for large inputs/outputs and batch processing
+   - Supports up to 10 model variants per endpoint
 
-## Testing
-
-- **Unit Tests:**  
-  Unit tests are available under the `test/` directory. Use Jest to run these tests:
-
-  ```bash
-  npm test
-  ```
-
-- **Integration Testing:**  
-  Once deployed, you can verify:
-  - The dynamic parameters are fetched via AppConfig.
-  - The SageMaker endpoints, API Gateway, and other resources function as expected.
-  - CloudWatch dashboards display the correct metrics.
-
----
+3. **Serverless Inference**:
+   - On-demand, auto-scaling compute with no minimum provisioning
+   - Pay only for the duration of the inference request
+   - Automatically scales to zero when not in use
+   - Limited to 5 model variants per endpoint
 
 ## Usage
 
-- **Updating Dynamic Configuration:**  
-  To update dynamic model parameters (e.g., endpoint names, thresholds), update the hosted configuration in AWS AppConfig or update your configuration file in S3 and deploy via AppConfig’s deployment process. This update propagates to all stacks using the custom resource.
-  
-- **Monitoring and Logging:**  
-  CloudWatch dashboards (MonitorDashboardStack and TesterDashboardStack) show key performance indicators, and alarms can be set for critical metrics.
+### Basic Deployment
 
----
+1. Configure your deployment and model configurations in the respective JSON files.
+
+2. Deploy the stacks:
+   ```bash
+   npm run cdk deploy
+   ```
+
+### Environment-Based Deployment
+
+Deploy to a specific environment using the `DEPLOYMENT_ENV` environment variable:
+
+```bash
+# Deploy to development environment
+export DEPLOYMENT_ENV=dev
+npm run cdk deploy
+
+# Deploy to test environment
+export DEPLOYMENT_ENV=test
+npm run cdk deploy
+
+# Deploy to production environment
+export DEPLOYMENT_ENV=prod
+npm run cdk deploy
+```
+
+### Asynchronous Inference
+
+To deploy an asynchronous inference endpoint:
+
+1. Update `deployment-config.json` to set `inferenceType` to `"async"`:
+   ```json
+   {
+     "environments": {
+       "dev": {
+         "inferenceType": "async",
+         "asyncConfig": {
+           "maxConcurrentInvocationsPerInstance": 5,
+           "expiresInSeconds": 3600
+         }
+       }
+     }
+   }
+   ```
+
+2. Deploy the stack:
+   ```bash
+   export DEPLOYMENT_ENV=dev
+   npm run cdk deploy
+   ```
+
+3. Invoke the async endpoint (Python example):
+   ```python
+   import boto3
+
+   sm_client = boto3.client('sagemaker-runtime')
+   response = sm_client.invoke_endpoint_async(
+       EndpointName='sagemaker-deployment-dev-async-endpoint',
+       ContentType='application/json',
+       InputLocation='s3://bucket-name/input/data.json'
+   )
+
+   # Get output location
+   output_location = response['OutputLocation']
+   print(f"Results will be available at: {output_location}")
+   ```
+
+### Serverless Inference
+
+To deploy a serverless inference endpoint:
+
+1. Update `deployment-config.json` to set `inferenceType` to `"serverless"`:
+   ```json
+   {
+     "environments": {
+       "dev": {
+         "inferenceType": "serverless",
+         "serverlessConfig": {
+           "memorySize": 2048,
+           "maxConcurrency": 5
+         }
+       }
+     }
+   }
+   ```
+
+2. Deploy the stack:
+   ```bash
+   export DEPLOYMENT_ENV=dev
+   npm run cdk deploy
+   ```
+
+3. Invoke the serverless endpoint (Python example):
+   ```python
+   import boto3
+   import json
+
+   sm_client = boto3.client('sagemaker-runtime')
+   response = sm_client.invoke_endpoint(
+       EndpointName='sagemaker-deployment-dev-serverless-endpoint',
+       ContentType='application/json',
+       Body=json.dumps({"inputs": "This is a sample text to classify"})
+   )
+
+   result = json.loads(response['Body'].read().decode())
+   print(result)
+   ```
+
+### Multiple Model Variants
+
+The construct supports deploying multiple model variants under a single endpoint:
+
+1. Update `model-config.json` to include multiple models:
+   ```json
+   {
+     "modelList": [
+       {
+         "ModelName": "text-classification-model-v1",
+         "VariantName": "PrimaryVariant",
+         "VariantWeight": 0.7,
+         "InstanceCount": 1,
+         "InstanceType": "ml.m5.large"
+       },
+       {
+         "ModelName": "text-classification-model-v2",
+         "VariantName": "ExperimentalVariant",
+         "VariantWeight": 0.3,
+         "InstanceCount": 1,
+         "InstanceType": "ml.m5.large"
+       }
+     ]
+   }
+   ```
+
+2. Deploy the stack to create an endpoint with the specified variants.
+
+**Note**:
+- Real-time and async endpoints support up to 10 variants.
+- Serverless endpoints are limited to a maximum of 5 variants.
+
+## Stack Descriptions
+
+The construct provides the following stacks:
+
+| Stack | Description |
+|-------|-------------|
+| **SageMakerBaseInfraStack** | Creates foundational resources (S3 buckets, IAM roles, KMS keys) |
+| **AppConfigStack** | Sets up AWS AppConfig for dynamic configuration management |
+| **SageMakerModelStack** | Creates SageMaker model resources from model artifacts |
+| **SageMakerEndpointStack** | Deploys real-time SageMaker endpoints with auto-scaling |
+| **SageMakerAsyncEndpointStack** | Deploys asynchronous inference SageMaker endpoints |
+| **SageMakerServerlessEndpointStack** | Deploys serverless inference SageMaker endpoints |
+| **MonitorDashboardStack** | Creates CloudWatch dashboards, metrics, and alarms |
+| **WorkflowStack** | Implements Step Functions workflows for model operations |
+
+## Utility Modules
+
+The project includes several utility modules to facilitate common operations:
+
+| Module | Description |
+|--------|-------------|
+| **SecurityUtils** | Security-related helpers for IAM, KMS, and encryption |
+| **ConfigUtils** | AppConfig integration helpers and configuration management |
+| **MonitoringUtils** | CloudWatch metrics, dashboards, and alarm helpers |
+| **EndpointUtils** | Endpoint configuration generators and deployment helpers |
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Deployment Failures**
+   
+   If stack deployment fails, check CloudFormation console for error details.
+   
+   Common causes:
+   - Insufficient IAM permissions
+   - Exceeding service limits
+   - Invalid configuration parameters
+
+2. **AppConfig Issues**
+   
+   If you see errors related to AppConfig:
+   - Verify AWS AppConfig service is available in your region
+   - Check that configuration files are valid JSON
+   - Ensure IAM roles have proper AppConfig permissions
+
+3. **Endpoint Deployment Failures**
+   
+   If SageMaker endpoint deployment fails:
+   - Validate model artifacts exist in the S3 location
+   - Check that Docker image URIs are correct and accessible
+   - Verify instance types are supported in your region
+   - For serverless, check memory size is in valid range (1024-6144 in 1GB increments)
+   - For async, verify output bucket has proper permissions
+
+4. **"Too Many Variants" Error for Serverless Endpoints**
+   
+   If you receive an error about too many variants:
+   - Serverless endpoints are limited to 5 variants maximum
+   - Split models across multiple endpoints if needed
+
+### Logs and Diagnostics
+
+- Check CloudWatch Logs for Lambda function errors
+- Check SageMaker endpoint logs for model-related errors
+- Monitor CloudWatch dashboards for endpoint performance metrics
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the LICENSE file for details.

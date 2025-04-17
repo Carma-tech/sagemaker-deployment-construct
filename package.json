@@ -2,13 +2,22 @@
   "name": "sagemaker-deployment-construct",
   "version": "0.1.0",
   "bin": {
-    "sagemaker-deployment-construct": "bin/sagemaker-deployment-construct.js"
+    "sagemaker-deployment-construct": "bin/sagemaker-deployment-app.js"
   },
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "test:unit": "jest test/unit",
+    "test:integration": "jest test/integration",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "cdk": "cdk",
+    "cdk:synth": "cdk synth",
+    "cdk:diff": "cdk diff",
+    "deploy:dev": "DEPLOYMENT_ENV=dev cdk deploy --all",
+    "deploy:test": "DEPLOYMENT_ENV=test cdk deploy --all",
+    "deploy:prod": "DEPLOYMENT_ENV=prod cdk deploy --all"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

@@ -38,6 +38,7 @@ export class APIHostingStack extends BaseStack {
             {
                 functionArn: cdk.Fn.importValue('AppconfigParameterFetcher'),
                 sameEnvironment: true,
+                skipPermissions: true // Add this to prevent permission modifications
             }
         );
         const provider = new cr.Provider(this, 'AppConfigParameterProvider', {
@@ -52,7 +53,7 @@ export class APIHostingStack extends BaseStack {
                 EnvironmentId: dynamicConfig.EnvironmentId,
                 ConfigurationProfileId: dynamicConfig.ConfigurationProfileId,
                 ParameterKey: 'sageMakerEndpointName',
-                RequiredMinimumPollIntervalInSeconds: 30,
+                RequiredMinimumPollIntervalInSeconds: '30', // Changed from number to string
             },
         });
         const sageMakerEndpoint = dynamicParameterResource.getAttString('ParameterValue');

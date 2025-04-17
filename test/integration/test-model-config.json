@@ -1,0 +1,30 @@
+{
+  "modelParameters": {
+    "preprocessing": {
+      "normalization": true,
+      "featureEngineering": {
+        "textTokenization": true,
+        "stopwordRemoval": true
+      }
+    },
+    "inference": {
+      "thresholds": {
+        "classification": 0.5,
+        "confidence": 0.7
+      },
+      "batchSize": 5
+    }
+  },
+  "sageMakerEndpointName": "test-async-endpoint",
+  "modelList": [
+    {
+      "ModelName": "test-model",
+      "ModelS3Key": "test/model.tar.gz",
+      "ModelDockerImage": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.5.1-cpu-py311-ubuntu22.04-sagemaker",
+      "VariantName": "TestVariant",
+      "VariantWeight": 1,
+      "InstanceCount": 1,
+      "InstanceType": "ml.m5.large"
+    }
+  ]
+}
