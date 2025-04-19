@@ -116,7 +116,7 @@ export class SageMakerAsyncEndpointStack extends BaseStack {
           actions: [
             'sagemaker:InvokeEndpointAsync'
           ],
-          resources: [this.endpoint.attrEndpointArn]
+          resources: [`arn:aws:sagemaker:${this.region}:${this.account}:endpoint/${this.endpoint.endpointName}`]
         }),
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
@@ -140,7 +140,7 @@ export class SageMakerAsyncEndpointStack extends BaseStack {
     });
 
     new cdk.CfnOutput(this, 'AsyncEndpointArn', {
-      value: this.endpoint.attrEndpointArn,
+      value: `arn:aws:sagemaker:${this.region}:${this.account}:endpoint/${this.endpoint.endpointName}`,
       exportName: `${this.projectPrefix}-async-endpoint-arn`,
     });
 

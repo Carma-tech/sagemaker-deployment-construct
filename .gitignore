@@ -11,6 +11,11 @@ cdk.out
 model.tar.gz
 *.tar.gz
 *.pth
+vocab.pt
+venv/
+env/
+torch_env/
+.data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

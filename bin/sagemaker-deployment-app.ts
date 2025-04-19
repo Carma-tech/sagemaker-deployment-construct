@@ -127,7 +127,7 @@ async function main() {
         deploymentStrategyName: 'standard',
         deploymentDurationInMinutes: 5,
         growthFactor: 20,
-        initialConfigPath: 'config/app-config.json',
+        initialConfigPath: 'config/model-config.json',
         enableAutoSync: true
       }
     );
